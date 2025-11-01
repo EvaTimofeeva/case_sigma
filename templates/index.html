@@ -292,11 +292,11 @@
 
         .step-item.running .step-icon {
             background: transparent;
-            border: 3px solid #ffc107;
-            border-top-color: white;
-            border-right-color: #ffc107;
-            border-bottom-color: #ffc107;
-            border-left-color: #ffc107;
+            border: 3px solid rgba(255, 193, 7, 0.3);
+            border-top-color: #ffc107;
+            border-right-color: transparent;
+            border-bottom-color: transparent;
+            border-left-color: transparent;
             animation: spin 0.8s linear infinite;
         }
 
@@ -459,6 +459,7 @@
         }
 
         @keyframes spin {
+            from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
 
@@ -712,36 +713,62 @@
             progressBar.style.width = `${progress}%`;
             progressBar.textContent = `${Math.round(progress)}%`;
             
-            // Update steps
-            stepsList.innerHTML = '';
+            // Update steps - preserve DOM elements to avoid animation resets
+            const existingSteps = stepsList.children;
+            
             data.steps.forEach((step, index) => {
-                const stepItem = document.createElement('li');
-                stepItem.className = `step-item ${step.status}`;
+                let stepItem, icon, stepName, stepStatus;
                 
-                const icon = document.createElement('div');
-                icon.className = 'step-icon';
-                
-                if (step.status === 'completed') {
-                    icon.textContent = '✓';
-                } else if (step.status === 'running') {
-                    icon.textContent = ''; // Spinner will be shown via CSS animation
+                if (index < existingSteps.length) {
+                    // Update existing element
+                    stepItem = existingSteps[index];
+                    icon = stepItem.querySelector('.step-icon');
+                    stepName = stepItem.querySelector('.step-name');
+                    stepStatus = stepItem.querySelector('.step-status');
                 } else {
-                    icon.textContent = index + 1;
+                    // Create new element
+                    stepItem = document.createElement('li');
+                    icon = document.createElement('div');
+                    icon.className = 'step-icon';
+                    stepName = document.createElement('div');
+                    stepName.className = 'step-name';
+                    stepStatus = document.createElement('div');
+                    stepStatus.className = 'step-status';
+                    
+                    stepItem.appendChild(icon);
+                    stepItem.appendChild(stepName);
+                    stepItem.appendChild(stepStatus);
+                    stepsList.appendChild(stepItem);
                 }
                 
-                const stepName = document.createElement('div');
-                stepName.className = 'step-name';
-                stepName.textContent = step.name;
+                // Update classes and content - only if status changed to preserve animations
+                const currentStatus = stepItem.getAttribute('data-status');
+                if (currentStatus !== step.status) {
+                    stepItem.className = `step-item ${step.status}`;
+                    stepStatus.className = `step-status ${step.status}`;
+                    
+                    // Update icon content based on new status
+                    if (step.status === 'completed') {
+                        icon.textContent = '✓';
+                    } else if (step.status === 'running') {
+                        icon.textContent = ''; // Spinner will be shown via CSS animation
+                    } else {
+                        icon.textContent = index + 1;
+                    }
+                    
+                    stepItem.setAttribute('data-status', step.status);
+                }
                 
-                const stepStatus = document.createElement('div');
-                stepStatus.className = `step-status ${step.status}`;
+                // Always update text content (these don't affect animation)
                 stepStatus.textContent = getStatusText(step.status);
-                
-                stepItem.appendChild(icon);
-                stepItem.appendChild(stepName);
-                stepItem.appendChild(stepStatus);
-                stepsList.appendChild(stepItem);
+                stepName.textContent = step.name;
             });
+            
+            // Remove any extra steps if the list got shorter
+            const initialLength = existingSteps.length;
+            for (let i = initialLength - 1; i >= data.steps.length; i--) {
+                stepsList.removeChild(existingSteps[i]);
+            }
             
             // Update message
             if (data.message) {
