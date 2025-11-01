@@ -1,0 +1,23 @@
+transcription:
+  engine: tone
+  device: cpu
+  sample_rate: 16000
+  overwrite: true
+  batch_limit: null
+  tone:
+    mode: python
+    python_import: tone
+    python_fn: asr_transcribe
+    model_name: small
+
+captions:
+  path: image_process/image_captions.csv   # <-- тут
+  text_column: caption_ru                  # <-- берём только один столбец
+
+training:
+  model_path: output_data/model.pkl
+  kfold: 3
+  gbrt:
+    n_estimators: 300
+    max_depth: 3
+    random_state: 42
