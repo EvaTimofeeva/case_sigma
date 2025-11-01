@@ -1,10 +1,10 @@
-""" 
+"""
 Этим файлом мы получаем описания к картинкам с помощью модели BLIP и переводим их на русский язык
-файл не используется в запущенной программе. 
+файл не используется в запущенной программе.
 Формируем датасет из 11 уникальных картинок и их описаний на русском(перевод с английского)
 Источник ссылок: input_data/<ваш csv>, колонка "Картинка из вопроса"
 Выход: output_data/image_captions.csv
-""" 
+"""
 
 import os
 import re
@@ -19,13 +19,16 @@ from tqdm.auto import tqdm
 
 import torch
 from transformers import (
-    BlipProcessor, BlipForConditionalGeneration,
-    MarianTokenizer, MarianMTModel
+    BlipProcessor,
+    BlipForConditionalGeneration,
+    MarianTokenizer,
+    MarianMTModel,
 )
 
-INPUT_DIR  = "input_data"
+INPUT_DIR = "input_data"
 OUTPUT_DIR = "output_data"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+
 
 # если в папке несколько csv — берём первый попавшийся
 def _pick_input_csv() -> str:
@@ -35,7 +38,8 @@ def _pick_input_csv() -> str:
     print(f"[error] В {INPUT_DIR} не найден .csv с данными.", file=sys.stderr)
     sys.exit(1)
 
-INPUT_CSV  = _pick_input_csv()
+
+INPUT_CSV = _pick_input_csv()
 OUTPUT_CSV = os.path.join(OUTPUT_DIR, "image_captions.csv")
 
 IMAGE_COL_CANDIDATES = [
@@ -44,6 +48,7 @@ IMAGE_COL_CANDIDATES = [
     "Картинка",
     "image_url",
 ]
+
 
 def robust_read_csv(path: str) -> pd.DataFrame:
     attempts = [
@@ -61,9 +66,11 @@ def robust_read_csv(path: str) -> pd.DataFrame:
             last = e
     raise RuntimeError(f"Не удалось прочитать CSV: {last}")
 
+
 def is_image_response(resp: requests.Response) -> bool:
     ct = (resp.headers.get("Content-Type") or "").lower()
     return ct.startswith("image/")
+
 
 def download_image(url: str, timeout: int = 12) -> Optional[Image.Image]:
     try:
@@ -77,19 +84,21 @@ def download_image(url: str, timeout: int = 12) -> Optional[Image.Image]:
     except Exception:
         return None
 
+
 # BLIP + перевод на русский
 BLIP_MODEL = "Salesforce/blip-image-captioning-base"
 print(f"[init] Загружаю BLIP: {BLIP_MODEL}")
 blip_processor = BlipProcessor.from_pretrained(BLIP_MODEL)
-blip_model     = BlipForConditionalGeneration.from_pretrained(BLIP_MODEL)
+blip_model = BlipForConditionalGeneration.from_pretrained(BLIP_MODEL)
 blip_model.eval()
 
 # переводчик EN->RU
 MT_MODEL = "Helsinki-NLP/opus-mt-en-ru"
 print(f"[init] Загружаю переводчик: {MT_MODEL}")
-mt_tok   = MarianTokenizer.from_pretrained(MT_MODEL)
+mt_tok = MarianTokenizer.from_pretrained(MT_MODEL)
 mt_model = MarianMTModel.from_pretrained(MT_MODEL)
 mt_model.eval()
+
 
 @torch.no_grad()
 def blip_caption(image: Image.Image, max_new_tokens: int = 30) -> str:
@@ -98,25 +107,33 @@ def blip_caption(image: Image.Image, max_new_tokens: int = 30) -> str:
     cap = blip_processor.decode(out[0], skip_special_tokens=True)
     return cap.strip()
 
+
 CYR = re.compile(r"[А-Яа-яЁё]")
+
 
 def translate_en_to_ru(texts: List[str], max_len: int = 256) -> List[str]:
     # батчевый перевод EN->RU. Если строка уже русская — возвращаем как есть
     result = []
     batch = []
-    idxs  = []
+    idxs = []
     for i, t in enumerate(texts):
         t = t or ""
         if CYR.search(t):
             result.append(t)
         else:
-            result.append(None) 
+            result.append(None)
             batch.append(t)
             idxs.append(i)
     if batch:
-        tokens = mt_tok(batch, return_tensors="pt", truncation=True, max_length=max_len, padding=True)
+        tokens = mt_tok(
+            batch,
+            return_tensors="pt",
+            truncation=True,
+            max_length=max_len,
+            padding=True,
+        )
         with torch.no_grad():
-            gen = mt_model.generate(**tokens, max_new_tokens= max_len//2)
+            gen = mt_model.generate(**tokens, max_new_tokens=max_len // 2)
         outs = [mt_tok.decode(g, skip_special_tokens=True) for g in gen]
         for i, ru in zip(idxs, outs):
             result[i] = ru.strip()
@@ -133,8 +150,10 @@ for c in IMAGE_COL_CANDIDATES:
         image_col = c
         break
 if not image_col:
-    raise RuntimeError(f"Не нашёл колонку с ссылками на изображения. "
-                       f"Ожидал одно из: {IMAGE_COL_CANDIDATES}. Доступные: {list(df.columns)}")
+    raise RuntimeError(
+        f"Не нашёл колонку с ссылками на изображения. "
+        f"Ожидал одно из: {IMAGE_COL_CANDIDATES}. Доступные: {list(df.columns)}"
+    )
 
 urls_raw = df[image_col].astype(str).str.strip()
 # убираем пустые и очевидный мусор (не http/https)
@@ -151,7 +170,9 @@ for u in urls_raw:
         break
 
 if len(unique_urls) < 11:
-    print(f"[warn] нашёл только {len(unique_urls)} уникальных ссылок (< 11). Будут использованы все, что есть.")
+    print(
+        f"[warn] нашёл только {len(unique_urls)} уникальных ссылок (< 11). Будут использованы все, что есть."
+    )
 
 print(f"[info] К обработке: {len(unique_urls)} уникальных изображений.")
 
@@ -159,12 +180,21 @@ rows = []
 for url in tqdm(unique_urls, desc="Картинки"):
     img = download_image(url)
     if img is None:
-        rows.append(dict(image_url=url, caption_en="", caption_ru="", status="Ошибка загрузки"))
+        rows.append(
+            dict(image_url=url, caption_en="", caption_ru="", status="Ошибка загрузки")
+        )
         continue
     try:
         cap_en = blip_caption(img)
     except Exception as e:
-        rows.append(dict(image_url=url, caption_en="", caption_ru="", status=f"Ошибка генерации: {e}"))
+        rows.append(
+            dict(
+                image_url=url,
+                caption_en="",
+                caption_ru="",
+                status=f"Ошибка генерации: {e}",
+            )
+        )
         continue
 
     cap_ru = translate_en_to_ru([cap_en])[0]

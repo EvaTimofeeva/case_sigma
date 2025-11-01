@@ -4,6 +4,7 @@ engine='none'  -> ничего не считаем, просто гаранти�
 engine='tone'  -> вызов T-one для транскрибации аудио.
 удаляем "мусор" по шаблонам.
 """
+
 import os
 import tempfile
 import requests
@@ -40,7 +41,7 @@ def transcribe(
     col_trans: str = "Транскрибация ответа",
     col_audio: str = "Ссылка на оригинальный файл запис",
     overwrite: bool = False,
-    engine: str = "none",                  # 'none' | 'tone'
+    engine: str = "none",  # 'none' | 'tone'
     col_trans_new: str = "Транскрибация ответа",
 ) -> pd.DataFrame:
     """

@@ -4,6 +4,7 @@ robust_read_table: надёжное чтение CSV/TSV (разные коди�
 load_noise_patterns: загрузка шаблонов "мусора" для чистки текста
 clean_text_noise: очистка текста от HTML и служебных фраз
 """
+
 from __future__ import annotations
 import os
 import re
@@ -11,7 +12,7 @@ import pandas as pd
 from typing import List
 
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
-_WS_RE       = re.compile(r"\s+")
+_WS_RE = re.compile(r"\s+")
 
 # Базовые "мусорные" фразы по умолчанию (если файла нет)
 _DEFAULT_NOISE: List[str] = [
@@ -21,6 +22,7 @@ _DEFAULT_NOISE: List[str] = [
     r"^приветствуем на экзамене\.?$",
     r"^говорите после сигнала\.?$",
 ]
+
 
 def robust_read_table(path: str) -> pd.DataFrame:
     """
@@ -43,6 +45,7 @@ def robust_read_table(path: str) -> pd.DataFrame:
             continue
     raise RuntimeError(f"Не удалось прочитать файл '{path}': {last_err}")
 
+
 def load_noise_patterns(path: str) -> List[re.Pattern]:
     """
     Загружает построчно регулярные выражения для удаления "мусора".
@@ -64,11 +67,13 @@ def load_noise_patterns(path: str) -> List[re.Pattern]:
     # компилируем в regex c флагом IGNORECASE
     return [re.compile(p, flags=re.IGNORECASE) for p in patterns]
 
+
 def _strip_html(s: str) -> str:
     """Удаляет HTML-теги и лишние пробелы."""
     s = _HTML_TAG_RE.sub(" ", s)
     s = _WS_RE.sub(" ", s).strip()
     return s
+
 
 def clean_text_noise(text: str, patterns: List[re.Pattern]) -> str:
     """

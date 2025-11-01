@@ -13,4 +13,7 @@ dependencies = [
   "requests>=2.31",
   "PyYAML>=6",
   "tone @ git+https://github.com/voicekit-team/T-one.git@d0ac83a2bb4893bebd2f748a183e106a558da7d9",
+  "flask>=3.1.2",
+  "pre-commit>=4.3.0",
+  "waitress>=3.0.2",
 ]

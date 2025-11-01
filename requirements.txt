@@ -1,8 +1,0 @@
-numpy>=1.24
-pandas>=2.2
-scikit-learn>=1.3
-tqdm>=4.66
-requests>=2.31
-PyYAML>=6
-
--e git+https://github.com/voicekit-team/T-one.git@d0ac83a2bb4893bebd2f748a183e106a558da7d9#egg=tone
