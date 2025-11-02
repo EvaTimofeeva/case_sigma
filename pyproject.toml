@@ -16,4 +16,5 @@ dependencies = [
   "flask>=3.1.2",
   "pre-commit>=4.3.0",
   "waitress>=3.0.2",
+  "miniaudio>=1.61",
 ]

@@ -2,7 +2,6 @@
 Выставление итоговой оценки и комментария по правилам и расчёт метрик качества
 """
 
-from typing import Dict, Any
 import numpy as np
 import pandas as pd
 
@@ -85,22 +84,24 @@ def apply_scoring_with_comments(
 
 
 def compute_metrics(
-    df: pd.DataFrame, col_gold: str = "Оценка экзаменатора"
-) -> Dict[str, Any]:
+    df: pd.DataFrame,
+    col_gold: str = "Оценка экзаменатора",
+    col_predict: str = "Оценка экзаменатора (модель)",
+):
     """
-    Считает MAE в баллах (как по заданию) по всей выборке и по каждому номеру вопроса.
-    Если в колонке с "золотом" есть пропуски — считаем по доступным.
+    Считает MAE в баллах по всей выборке и по каждому номеру вопроса.
     """
-    res: Dict[str, Any] = {}
-    if col_gold not in df.columns or "Оценка экзаменатора (модель)" not in df.columns:
-        return res
+    if col_gold not in df.columns or col_predict not in df.columns:
+        return None
 
-    mask = (~df[col_gold].isna()) & (~df["Оценка экзаменатора (модель)"].isna())
+    mask = (~df[col_gold].isna()) & (~df[col_predict].isna())
     if not mask.any():
-        return res
+        return None
+
+    res = {}
 
     y_true = df.loc[mask, col_gold].astype(float).values
-    y_pred = df.loc[mask, "Оценка экзаменатора (модель)"].astype(float).values
+    y_pred = df.loc[mask, col_predict].astype(float).values
     mae_overall = float(np.mean(np.abs(y_true - y_pred)))
     res["mae_overall"] = mae_overall
 
@@ -110,7 +111,7 @@ def compute_metrics(
         m = mask & (df["№ вопроса"] == q)
         if m.any():
             yt = df.loc[m, col_gold].astype(float).values
-            yp = df.loc[m, "Оценка экзаменатора (модель)"].astype(float).values
+            yp = df.loc[m, col_predict].astype(float).values
             by_q[str(q)] = float(np.mean(np.abs(yt - yp)))
     res["mae_by_question"] = by_q
     return res

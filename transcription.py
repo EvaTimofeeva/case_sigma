@@ -40,7 +40,6 @@ def transcribe(
     df: pd.DataFrame,
     col_trans: str = "Транскрибация ответа",
     col_audio: str = "Ссылка на оригинальный файл запис",
-    overwrite: bool = False,
     engine: str = "none",  # 'none' | 'tone'
     col_trans_new: str = "Транскрибация ответа",
 ) -> pd.DataFrame:
@@ -48,8 +47,7 @@ def transcribe(
     Гарантирует наличие колонки транскрибации и (опц.) очищает её от мусора.
 
     - Если engine='none': просто создаём/оставляем колонку как есть.
-    - Если engine='tone': тут должен быть ваш вызов T-one (HTTP-клиент и т.п.).
-    - overwrite=True перезаписывает существующие значения.
+    - Если engine='tone': транскрибируем аудио файлы через T-one.
 
     Возвращает копию df.
     """
@@ -72,7 +70,8 @@ def transcribe(
                 continue
             audio_path = _download_if_url(audio_path)
             audio = read_audio(audio_path)
-            transcript = model.forward_offline(audio)
+            transcripts = model.forward_offline(audio)
+            transcript = " ".join([segment.text for segment in transcripts])
             transcriptions.append(transcript)
 
         out[col_trans_new] = transcriptions

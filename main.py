@@ -11,6 +11,7 @@
 import os
 import json
 import time
+import argparse
 import pandas as pd
 
 from utils_app import (
@@ -120,14 +121,24 @@ def step_6_apply_scoring_with_comments(df: pd.DataFrame, model, feats) -> pd.Dat
     return df
 
 
-def step_7_save_artifacts(df: pd.DataFrame) -> tuple[str, dict]:
-    out_csv = os.path.join(OUTPUT_DIR, "predictions.csv")
+def step_7_save_artifacts(df: pd.DataFrame, job_id=None):
+    metrics = compute_metrics(df, col_gold=COL_GOLD, col_predict=COL_PREDICT)
+    if metrics and not job_id:
+        with open(os.path.join(OUTPUT_DIR, "metrics.json"), "w", encoding="utf-8") as f:
+            json.dump(metrics, f, ensure_ascii=False, indent=2)
+
+    if not metrics:
+        df = df.drop(columns=[COL_GOLD])
+        df = df.rename(columns={COL_PREDICT: COL_GOLD})
+
+    if job_id:
+        out_csv = os.path.join(OUTPUT_DIR, f"predictions_{job_id}.csv")
+    else:
+        out_csv = os.path.join(OUTPUT_DIR, "predictions.csv")
+
     df.to_csv(
         out_csv, sep=";", index=False, encoding="utf-8-sig", quoting=csv.QUOTE_ALL
     )
-    metrics = compute_metrics(df, col_gold=COL_GOLD)
-    with open(os.path.join(OUTPUT_DIR, "metrics.json"), "w", encoding="utf-8") as f:
-        json.dump(metrics, f, ensure_ascii=False, indent=2)
     return out_csv, metrics
 
 
@@ -172,4 +183,24 @@ def main(input_path: str = "input_data/Данные для кейса.csv"):
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(
+        description="Пайплайн для оценки экзаменационных ответов"
+    )
+    parser.add_argument(
+        "--input_data",
+        type=str,
+        default="input_data/Данные для кейса.csv",
+        help="Путь к входному CSV файлу",
+    )
+    parser.add_argument(
+        "--do_transcription",
+        action="store_true",
+        help="Выполнять транскрибацию аудио с помощью T-one",
+    )
+
+    args = parser.parse_args()
+
+    if args.do_transcription:
+        DO_TRANSCRIPTION = True
+
+    main(input_path=args.input_data)
